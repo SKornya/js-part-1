@@ -1,3 +1,8 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-restricted-imports */
+import Maps from './maps.js';
+import { getRoute, codeFromName, nameFromCode } from './api.js';
+
 // Загрузка данных через await
 async function getDataAsync(url) {
     // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
@@ -77,14 +82,14 @@ function getDataPromise(url) {
 }
 
 // Две функции просто для примера, выберите с await или promise, какая нравится
-const getData = getDataAsync || getDataPromise;
+const getData = getDataAsync;
 
 async function loadCountriesData() {
     let countries = [];
     try {
         // ПРОВЕРКА ОШИБКИ №1: ломаем этот урл, заменяя all на allolo,
         // получаем кастомную ошибку.
-        countries = await getData('https://restcountries.com/v3.1/all?fields=name&fields=cca3&fields=area');
+        countries = await getData('https://restcountries.com/v3.1/all?fields=name,cca3,area,borders');
     } catch (error) {
         // console.log('catch for getData');
         // console.error(error);
@@ -103,23 +108,40 @@ const countriesList = document.getElementById('countriesList');
 const submit = document.getElementById('submit');
 const output = document.getElementById('output');
 
+const saveDataInSessionStorage = (countriesData) => {
+    sessionStorage.setItem('countriesData', JSON.stringify(countriesData));
+};
+
+const getDataFromSessionStorage = (key) => JSON.parse(sessionStorage.getItem(key));
+
 (async () => {
     fromCountry.disabled = true;
     toCountry.disabled = true;
     submit.disabled = true;
 
     output.textContent = 'Loading…';
-    let countriesData = {};
-    try {
-        // ПРОВЕРКА ОШИБКИ №2: Ставим тут брейкпоинт и, когда дойдёт
-        // до него, переходим в оффлайн-режим. Получаем эксцепшн из `fetch`.
-        countriesData = await loadCountriesData();
-    } catch (error) {
-        // console.log('catch for loadCountriesData');
-        // console.error(error);
-        output.textContent = 'Something went wrong. Try to reset your compluter.';
-        return;
+    // let countriesData = {};
+
+    // показалось, что будет лучше сохранять локально страны,
+    // не делая запрос при каждой перезагрузке страницы
+
+    if (!sessionStorage.countriesData) {
+        try {
+            // ПРОВЕРКА ОШИБКИ №2: Ставим тут брейкпоинт и, когда дойдёт
+            // до него, переходим в оффлайн-режим. Получаем эксцепшн из `fetch`.
+
+            // countriesData = await loadCountriesData();
+            saveDataInSessionStorage(await loadCountriesData());
+        } catch (error) {
+            // console.log('catch for loadCountriesData');
+            console.error(error);
+            output.textContent = 'Something went wrong. Try to reset your compluter.';
+            return;
+        }
     }
+
+    const countriesData = getDataFromSessionStorage('countriesData');
+
     output.textContent = '';
 
     // Заполняем список стран для подсказки в инпутах
@@ -135,10 +157,64 @@ const output = document.getElementById('output');
     toCountry.disabled = false;
     submit.disabled = false;
 
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
+
+        fromCountry.disabled = true;
+        toCountry.disabled = true;
+        submit.disabled = true;
+
         // TODO: Вывести, откуда и куда едем, и что идёт расчёт.
-        // TODO: Рассчитать маршрут из одной страны в другую за минимум запросов.
-        // TODO: Вывести маршрут и общее количество запросов.
+
+        const fromCode = await codeFromName(fromCountry.value, Object.values(countriesData));
+        const toCode = await codeFromName(toCountry.value, Object.values(countriesData));
+
+        if (fromCode && toCode) {
+            output.textContent = 'Calculating...';
+
+            // TODO: Рассчитать маршрут из одной страны в другую за минимум запросов.
+
+            const { routes, requestsCount } = await getRoute(countriesData, fromCode, toCode);
+
+            console.log(routes, requestsCount);
+
+            output.textContent = '';
+
+            Maps.setEndPoints(fromCode, toCode);
+
+            // TODO: Вывести маршрут и общее количество запросов.
+
+            if (!!routes.length && routes[0].length < 10) {
+                // Maps.markAsVisited(route);
+
+                const formattedRoutes = routes
+                    .map((route) => {
+                        Maps.markAsVisited(route);
+                        route.forEach(async (country) => {
+                            country = await nameFromCode(country, countriesData);
+                        });
+                        const joinedRoute = route.join(' -> ');
+                        return `<p>${joinedRoute}</p>`;
+                    })
+                    .join('');
+
+                output.innerHTML = `
+                <p>${formattedRoutes}</p>
+                <p>Потребовалось ${requestsCount} запросов!</p>`;
+            } else if (!routes.length) {
+                output.textContent = `There is no land route between ${fromCountry.value} and ${toCountry.value}`;
+            } else if (routes[0].length > 10) {
+                output.textContent = `Too long route between ${fromCountry.value} and ${toCountry.value}`;
+            }
+        } else {
+            output.textContent = 'Wrong input!';
+            Maps.setEndPoints(); // чистим карту
+        }
+
+        fromCountry.disabled = false;
+        toCountry.disabled = false;
+        submit.disabled = false;
+
+        form.reset();
     });
 })();

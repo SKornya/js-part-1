@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* global am5, am5map, am5geodata_worldLow, am5themes_Animated */
 
 import 'https://cdn.amcharts.com/lib/5/index.js';
@@ -6,7 +7,7 @@ import 'https://cdn.amcharts.com/lib/5/geodata/worldLow.js';
 import 'https://cdn.amcharts.com/lib/5/themes/Animated.js';
 import cca3to2Map from '/cca3to2.js';
 
-const empty = () => {
+const empty = (...args): void => {
     console.error('am5 is not initialized yet');
 };
 
@@ -19,7 +20,7 @@ const module = {
 am5.ready(() => {
     // Вообще так делать нехорошо. Куда поставить div, какая у него высота
     // и всё такое прочее должно решать приложение, а не модуль карты.
-    const mapNode = document.createElement('div');
+    const mapNode: HTMLDivElement = document.createElement('div');
     mapNode.id = 'maps';
     mapNode.style.height = '500px';
     mapNode.style.marginTop = '20px';
@@ -86,12 +87,12 @@ am5.ready(() => {
         });
     };
 
-    module.setEndPoints = (from, to) => {
+    module.setEndPoints = (from: string, to: string): void => {
         resetAllMarks();
         fill([from, to], 'primaryButtonHover');
     };
 
-    module.markAsVisited = (countryCodes) => {
+    module.markAsVisited = (countryCodes: string[]): void => {
         fill(countryCodes, 'positive');
     };
 });

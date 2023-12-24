@@ -5,7 +5,9 @@
   "repository": "git@github.com:ipetropolsky/js-part-1.git",
   "author": "'Ivan Petropolsky' <i.petropolsky@hh.ru>",
   "license": "MIT",
+  "type": "module",
   "scripts": {
+    "compileTs": "tsc",
     "postinstall": "cp ./githooks/* .git/hooks",
     "lint-staged": "lint-staged",
     "http-server": "http-server"
@@ -16,6 +18,7 @@
     "eslint-plugin-prettier": "4.2.1",
     "http-server": "14.1.1",
     "lint-staged": "13.1.0",
-    "prettier": "2.8.0"
+    "prettier": "2.8.0",
+    "typescript": "4.9.4"
   }
 }
